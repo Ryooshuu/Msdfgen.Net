@@ -1,5 +1,4 @@
-﻿using System.CodeDom.Compiler;
-using Msdfgen.IO;
+﻿using Msdfgen.IO;
 
 namespace Msdfgen.ManualTest
 {

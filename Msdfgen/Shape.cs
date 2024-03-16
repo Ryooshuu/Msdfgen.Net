@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Msdfgen
 {
@@ -15,7 +16,7 @@ namespace Msdfgen
                 if (contour.Count == 1)
                 {
                     var parts = new EdgeSegment[3];
-                    contour[0].SplitInThirds(out parts[0], out parts[1], out parts[2]);
+                    contour.First().SplitInThirds(out parts[0], out parts[1], out parts[2]);
                     contour.Clear();
                     contour.Add(parts[0]);
                     contour.Add(parts[1]);
@@ -29,7 +30,7 @@ namespace Msdfgen
             foreach (var contour in this)
                 if (contour.Count > 0)
                 {
-                    var corner = contour[contour.Count - 1].Point(1);
+                    var corner = contour.ElementAt(contour.Count - 1).Point(1);
                     foreach (var edge in contour)
                     {
                         if (edge == null)

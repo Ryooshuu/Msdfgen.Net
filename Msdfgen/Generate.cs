@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Runtime.CompilerServices;
 
 namespace Msdfgen
@@ -303,7 +304,7 @@ namespace Msdfgen
                     sd.Dist = context.PosDist;
                     context.Winding = 1;
                     for (var i = 0; i < Shape.Count; ++i)
-                        if (Windings[i] > 0 && ContourSd[i].Dist > sd.Dist &&
+                        if (Windings.ElementAt(i) > 0 && ContourSd[i].Dist > sd.Dist &&
                             Math.Abs(ContourSd[i].Dist) < Math.Abs(context.NegDist))
                             sd = ContourSd[i];
                 }
@@ -312,13 +313,13 @@ namespace Msdfgen
                     sd.Dist = context.NegDist;
                     context.Winding = -1;
                     for (var i = 0; i < Shape.Count; ++i)
-                        if (Windings[i] < 0 && ContourSd[i].Dist < sd.Dist &&
+                        if (Windings.ElementAt(i) < 0 && ContourSd[i].Dist < sd.Dist &&
                             Math.Abs(ContourSd[i].Dist) < Math.Abs(context.PosDist))
                             sd = ContourSd[i];
                 }
 
                 for (var i = 0; i < Shape.Count; ++i)
-                    if (Windings[i] != context.Winding && Math.Abs(ContourSd[i].Dist) < Math.Abs(sd.Dist))
+                    if (Windings.ElementAt(i) != context.Winding && Math.Abs(ContourSd[i].Dist) < Math.Abs(sd.Dist))
                         sd = ContourSd[i];
                 return sd;
             }
@@ -371,7 +372,7 @@ namespace Msdfgen
                 {
                     EdgePoint r = EdgePoint.Default, g = EdgePoint.Default, b = EdgePoint.Default;
 
-                    MsdfScanContourEdges(Shape[i], ctx.P, ref r, ref g, ref b);
+                    MsdfScanContourEdges(Shape.ElementAt(i), ctx.P, ref r, ref g, ref b);
 
                     if (r.MinDistance < sr.MinDistance)
                         sr = r;
@@ -387,7 +388,7 @@ namespace Msdfgen
                     if (medMinDistance < d)
                     {
                         d = medMinDistance;
-                        ctx.Winding = -Windings[i];
+                        ctx.Winding = -Windings.ElementAt(i);
                     }
 
                     r.NearEdge?.DistanceToPseudoDistance(ref r.MinDistance, ctx.P, r.NearParam);
@@ -399,7 +400,7 @@ namespace Msdfgen
                     ContourSd[i].G = g.MinDistance.Distance;
                     ContourSd[i].B = b.MinDistance.Distance;
                     ContourSd[i].Med = medMinDistance;
-                    ctx.UpdateDistance(Windings[i], medMinDistance);
+                    ctx.UpdateDistance(Windings.ElementAt(i), medMinDistance);
                 }
 
                 sr.NearEdge?.DistanceToPseudoDistance(ref sr.MinDistance, ctx.P, sr.NearParam);
@@ -440,7 +441,7 @@ namespace Msdfgen
                 for (var i = 0; i < Shape.Count; ++i)
                 {
                     var minDistance = SignedDistance.Infinite;
-                    foreach (var edge in Shape[i])
+                    foreach (var edge in Shape.ElementAt(i))
                     {
                         var distance = edge.SignedDistance(ctx.P, ref dummy);
                         if (distance < minDistance)
@@ -448,7 +449,7 @@ namespace Msdfgen
                     }
 
                     ContourSd[i] = new SingleDistance {Dist = minDistance.Distance};
-                    ctx.UpdateDistance(Windings[i], minDistance.Distance);
+                    ctx.UpdateDistance(Windings.ElementAt(i), minDistance.Distance);
                 }
 
                 return (float) (ComputeSd(Infinite, ref ctx).Dist / Range + 0.5);
@@ -466,7 +467,7 @@ namespace Msdfgen
                     var minDistance = SignedDistance.Infinite;
                     EdgeSegment nearEdge = null;
                     double nearParam = 0;
-                    foreach (var edge in Shape[i])
+                    foreach (var edge in Shape.ElementAt(i))
                     {
                         double param = 0;
                         var distance = edge.SignedDistance(ctx.P, ref param);
@@ -481,12 +482,12 @@ namespace Msdfgen
                     if (Math.Abs(minDistance.Distance) < Math.Abs(sd))
                     {
                         sd = minDistance.Distance;
-                        ctx.Winding = -Windings[i];
+                        ctx.Winding = -Windings.ElementAt(i);
                     }
 
                     nearEdge?.DistanceToPseudoDistance(ref minDistance, ctx.P, nearParam);
                     ContourSd[i] = new SingleDistance {Dist = minDistance.Distance};
-                    ctx.UpdateDistance(Windings[i], minDistance.Distance);
+                    ctx.UpdateDistance(Windings.ElementAt(i), minDistance.Distance);
                 }
 
                 return (float) (ComputeSd(Infinite, ref ctx).Dist / Range + 0.5);

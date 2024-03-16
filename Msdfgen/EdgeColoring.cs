@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Msdfgen
 {
@@ -61,7 +62,7 @@ namespace Msdfgen
             {
                 _corners.Clear();
                 if (contour.Count <= 0) return;
-                var prevDirection = contour[contour.Count - 1].Direction(1);
+                var prevDirection = contour.ElementAt(contour.Count - 1).Direction(1);
                 var index = 0;
                 foreach (var edge in contour)
                 {
@@ -105,7 +106,7 @@ namespace Msdfgen
                 {
                     var m = contour.Count;
                     for (var i = 0; i < m; ++i)
-                        contour[(_corners[0] + i) % m].Color =
+                        contour.ElementAt((_corners.First() + i) % m).Color =
                             (colors + 1)[(int) Math.Floor(3 + 2.875 * i / (m - 1) - 1.4375 + .5) - 3];
                 }
                 else if (contour.Count >= 1)
@@ -121,13 +122,13 @@ namespace Msdfgen
 
             private unsafe void ProcessTearDropContourSplitAndColor(Contour contour, EdgeColor* colors)
             {
-                var corner = _corners[0];
+                var corner = _corners.First();
                 var parts = new EdgeSegment[] {null, null, null, null, null, null, null};
-                contour[0].SplitInThirds(out parts[0 + 3 * corner], out parts[1 + 3 * corner],
+                contour.First().SplitInThirds(out parts[0 + 3 * corner], out parts[1 + 3 * corner],
                     out parts[2 + 3 * corner]);
                 if (contour.Count >= 2)
                 {
-                    contour[1].SplitInThirds(out parts[3 - 3 * corner],
+                    contour.ElementAt(1).SplitInThirds(out parts[3 - 3 * corner],
                         out parts[4 - 3 * corner],
                         out parts[5 - 3 * corner]);
                     parts[0].Color = parts[1].Color = colors[0];
@@ -150,7 +151,7 @@ namespace Msdfgen
             {
                 var cornerCount = _corners.Count;
                 var spline = 0;
-                var start = _corners[0];
+                var start = _corners.First();
                 var m = contour.Count;
                 var color = EdgeColor.White;
                 SwitchColor(ref color, ref _seed);
@@ -158,13 +159,13 @@ namespace Msdfgen
                 for (var i = 0; i < m; ++i)
                 {
                     var index = (start + i) % m;
-                    if (spline + 1 < cornerCount && _corners[spline + 1] == index)
+                    if (spline + 1 < cornerCount && _corners.ElementAt(spline + 1) == index)
                     {
                         ++spline;
                         SwitchColor(ref color, ref _seed, spline == cornerCount - 1 ? initialColor : 0);
                     }
 
-                    contour[index].Color = color;
+                    contour.ElementAt(index).Color = color;
                 }
             }
         }

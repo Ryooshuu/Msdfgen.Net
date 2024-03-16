@@ -1,15 +1,16 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>netcoreapp2.1</TargetFramework>
+    <TargetFramework>net7.0</TargetFramework>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="SharpFontStandard" Version="4.0.1" />
+    <ProjectReference Include="..\Msdfgen\Msdfgen.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Msdfgen\Msdfgen.csproj" />
+    <PackageReference Include="SharpFont.Dependencies" Version="2.6.0" />
+    <PackageReference Include="SpaceWizards.SharpFont" Version="1.0.2" />
   </ItemGroup>
 
 </Project>

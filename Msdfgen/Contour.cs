@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Msdfgen
 {
@@ -36,7 +37,7 @@ namespace Msdfgen
         private double WindingMultiple()
         {
             var total = 0.0;
-            var prev = this[Count - 1].Point(0);
+            var prev = this.ElementAt(Count - 1).Point(0);
             foreach (var edge in this)
             {
                 var cur = edge.Point(0);
@@ -49,18 +50,18 @@ namespace Msdfgen
 
         private double WindingDouble()
         {
-            Vector2 a = this[0].Point(0),
-                b = this[0].Point(.5),
-                c = this[1].Point(0),
-                d = this[1].Point(.5);
+            Vector2 a = this.First().Point(0),
+                b = this.First().Point(.5),
+                c = this.ElementAt(1).Point(0),
+                d = this.ElementAt(1).Point(.5);
             return Shoelace(a, b) + Shoelace(b, c) + Shoelace(c, d) + Shoelace(d, a);
         }
 
         private double WindingSingle()
         {
-            Vector2 a = this[0].Point(0),
-                b = this[0].Point(1.0 / 3.0),
-                c = this[0].Point(2.0 / 3.0);
+            Vector2 a = this.First().Point(0),
+                b = this.First().Point(1.0 / 3.0),
+                c = this.First().Point(2.0 / 3.0);
             return Shoelace(a, b) + Shoelace(b, c) + Shoelace(c, a);
         }
 

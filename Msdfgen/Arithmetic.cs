@@ -1,5 +1,6 @@
 using System;
 using System.Runtime.CompilerServices;
+using SixLabors.ImageSharp.PixelFormats;
 
 namespace Msdfgen
 {
@@ -29,6 +30,12 @@ namespace Msdfgen
         public static float Mix(float a, float b, double weight)
         {
             return (float) ((1.0 - weight) * a + weight * b);
+        }
+        
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static float Mix(Rg32 a, Rg32 b, double weight)
+        {
+            return (float) ((1.0 - weight) * a.ToVector2().X + weight * b.ToVector2().X);
         }
 
         /// Returns 1 for positive values, -1 for negative values, and 0 for zero.

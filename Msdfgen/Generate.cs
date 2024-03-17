@@ -2,12 +2,14 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.PixelFormats;
 
 namespace Msdfgen
 {
     public static class Generate
     {
-        private static bool PixelClash(FloatRgb a, FloatRgb b, double threshold)
+        private static bool PixelClash(RgbaVector a, RgbaVector b, double threshold)
         {
             // Only consider pair where both are on the inside or both are on the outside
             var aIn = (a.R > .5f ? 1 : 0) + (a.G > .5f ? 1 : 0) + (a.B > .5f ? 1 : 0) >= 2;
@@ -65,7 +67,7 @@ namespace Msdfgen
                    Math.Abs(bc - .5f); // Out of the pair, only flag the pixel farther from a shape edge
         }
 
-        private static void MsdfErrorCorrection(Bitmap<FloatRgb> output, Vector2 threshold)
+        private static void MsdfErrorCorrection(Image<RgbaVector> output, Vector2 threshold)
         {
             var clashes = new List<KeyValuePair<int, int>>();
             int w = output.Width, h = output.Height;
@@ -79,7 +81,7 @@ namespace Msdfgen
 
             foreach (var clash in clashes)
             {
-                ref var pixel = ref output[clash.Key, clash.Value];
+                var pixel = output[clash.Key, clash.Value];
                 var med = Arithmetic.Median(pixel.R, pixel.G, pixel.B);
                 pixel.R = med;
                 pixel.G = med;
@@ -193,7 +195,7 @@ namespace Msdfgen
             }
         }
 
-        public static void MsdfLegacy(Bitmap<FloatRgb> output, Shape shape, double range, Vector2 scale,
+        public static void MsdfLegacy(Image<RgbaVector> output, Shape shape, double range, Vector2 scale,
             Vector2 translate, double edgeThreshold = 1.00000001)
         {
             int w = output.Width, h = output.Height;
@@ -212,9 +214,11 @@ namespace Msdfgen
                     r.NearEdge?.DistanceToPseudoDistance(ref r.MinDistance, p, r.NearParam);
                     g.NearEdge?.DistanceToPseudoDistance(ref g.MinDistance, p, g.NearParam);
                     b.NearEdge?.DistanceToPseudoDistance(ref b.MinDistance, p, b.NearParam);
-                    output[x, row].R = (float) (r.MinDistance.Distance / range + .5);
-                    output[x, row].G = (float) (g.MinDistance.Distance / range + .5);
-                    output[x, row].B = (float) (b.MinDistance.Distance / range + .5);
+                    output[x, row] = new RgbaVector(
+                        (float) (r.MinDistance.Distance / range + .5),
+                        (float) (g.MinDistance.Distance / range + .5),
+                        (float) (b.MinDistance.Distance / range + .5)
+                    );
                 }
             }
 
@@ -222,9 +226,10 @@ namespace Msdfgen
                 MsdfErrorCorrection(output, edgeThreshold / (scale * range));
         }
 
-        public interface ISdfBase<T> where T : struct
+        public interface ISdfBase<TPixel>
+            where TPixel : unmanaged, IPixel<TPixel>
         {
-            Bitmap<T> Output { set; }
+            Image<TPixel> Output { set; }
             Shape Shape { set; }
             double Range { set; }
             Vector2 Scale { set; }
@@ -232,11 +237,11 @@ namespace Msdfgen
             void Compute();
         }
 
-        public interface ISdf : ISdfBase<float>
+        public interface ISdf : ISdfBase<Rg32>
         {
         }
 
-        public interface IMsdf : ISdfBase<FloatRgb>
+        public interface IMsdf : ISdfBase<RgbaVector>
         {
             double EdgeThreshold { set; }
         }
@@ -258,11 +263,12 @@ namespace Msdfgen
         }
 
         private abstract class Overlapping<TDistance, TPixel> : ISdfBase<TPixel>
-            where TPixel : struct where TDistance : struct, IDistance
+            where TPixel : unmanaged, IPixel<TPixel>
+            where TDistance : struct, IDistance
         {
             protected TDistance[] ContourSd;
             protected List<int> Windings;
-            public Bitmap<TPixel> Output { protected get; set; }
+            public Image<TPixel> Output { protected get; set; }
             public double Range { protected get; set; }
             public Vector2 Scale { protected get; set; }
             public Shape Shape { protected get; set; }
@@ -343,7 +349,7 @@ namespace Msdfgen
             }
         }
 
-        private class MsdfImpl : Overlapping<MultiDistance, FloatRgb>, IMsdf
+        private class MsdfImpl : Overlapping<MultiDistance, RgbaVector>, IMsdf
         {
             private static readonly MultiDistance Infinite = new MultiDistance
             {
@@ -363,7 +369,7 @@ namespace Msdfgen
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            protected override FloatRgb ComputePixel(ref InstanceContext ctx)
+            protected override RgbaVector ComputePixel(ref InstanceContext ctx)
             {
                 EdgePoint sr = EdgePoint.Default, sg = EdgePoint.Default, sb = EdgePoint.Default;
                 var d = Math.Abs(SignedDistance.Infinite.Distance);
@@ -417,7 +423,7 @@ namespace Msdfgen
                     msd.B = sb.MinDistance.Distance;
                 }
 
-                return new FloatRgb
+                return new RgbaVector
                 {
                     R = (float) (msd.R / Range + .5),
                     G = (float) (msd.G / Range + .5),
@@ -426,7 +432,7 @@ namespace Msdfgen
             }
         }
 
-        private abstract class SdfImplBase : Overlapping<SingleDistance, float>, ISdf
+        private abstract class SdfImplBase : Overlapping<SingleDistance, Rg32>, ISdf
         {
             protected static readonly SingleDistance Infinite = new SingleDistance
                 {Dist = SignedDistance.Infinite.Distance};
@@ -435,7 +441,7 @@ namespace Msdfgen
         private class SdfImpl : SdfImplBase
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            protected override float ComputePixel(ref InstanceContext ctx)
+            protected override Rg32 ComputePixel(ref InstanceContext ctx)
             {
                 double dummy = 0;
                 for (var i = 0; i < Shape.Count; ++i)
@@ -452,14 +458,14 @@ namespace Msdfgen
                     ctx.UpdateDistance(Windings.ElementAt(i), minDistance.Distance);
                 }
 
-                return (float) (ComputeSd(Infinite, ref ctx).Dist / Range + 0.5);
+                return new Rg32((float) (ComputeSd(Infinite, ref ctx).Dist / Range + 0.5), 0f);
             }
         }
 
         private class PseudoSdfImpl : SdfImplBase
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            protected override float ComputePixel(ref InstanceContext ctx)
+            protected override Rg32 ComputePixel(ref InstanceContext ctx)
             {
                 var sd = SignedDistance.Infinite.Distance;
                 for (var i = 0; i < Shape.Count; ++i)
@@ -490,7 +496,7 @@ namespace Msdfgen
                     ctx.UpdateDistance(Windings.ElementAt(i), minDistance.Distance);
                 }
 
-                return (float) (ComputeSd(Infinite, ref ctx).Dist / Range + 0.5);
+                return new Rg32((float) (ComputeSd(Infinite, ref ctx).Dist / Range + 0.5), 0f);
             }
         }
 

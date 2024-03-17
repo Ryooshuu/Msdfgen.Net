@@ -1,12 +1,14 @@
 using System;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.PixelFormats;
 
 namespace Msdfgen
 {
     public static class Render
     {
-        private static FloatRgb Mix(FloatRgb a, FloatRgb b, double weight)
+        private static RgbaVector Mix(RgbaVector a, RgbaVector b, double weight)
         {
-            var output = new FloatRgb
+            var output = new RgbaVector
             {
                 R = Arithmetic.Mix(a.R, b.R, weight),
                 G = Arithmetic.Mix(a.G, b.G, weight),
@@ -15,7 +17,7 @@ namespace Msdfgen
             return output;
         }
 
-        private static FloatRgb Sample(Bitmap<FloatRgb> bitmap, Vector2 pos)
+        private static RgbaVector Sample(Image<RgbaVector> bitmap, Vector2 pos)
         {
             int w = bitmap.Width, h = bitmap.Height;
             var x = pos.X * w - .5;
@@ -33,7 +35,7 @@ namespace Msdfgen
             return Mix(Mix(bitmap[l, b], bitmap[r, b], lr), Mix(bitmap[l, t], bitmap[r, t], lr), bt);
         }
 
-        private static float Sample(Bitmap<float> bitmap, Vector2 pos)
+        private static float Sample(Image<Rg32> bitmap, Vector2 pos)
         {
             int w = bitmap.Width, h = bitmap.Height;
             var x = pos.X * w - .5;
@@ -59,7 +61,7 @@ namespace Msdfgen
             return (float) Math.Clamp((dist - .5) * pxRange + .5, 0, 1);
         }
 
-        public static void RenderSdf(Bitmap<float> output, Bitmap<float> sdf, double pxRange)
+        public static void RenderSdf(Image<Rg32> output, Image<Rg32> sdf, double pxRange)
         {
             int w = output.Width, h = output.Height;
             pxRange *= (double) (w + h) / (sdf.Width + sdf.Height);
@@ -67,11 +69,11 @@ namespace Msdfgen
             for (var x = 0; x < w; ++x)
             {
                 var s = Sample(sdf, new Vector2((x + .5) / w, (y + .5) / h));
-                output[x, y] = DistVal(s, pxRange);
+                output[x, y] = new Rg32(DistVal(s, pxRange), 0f);
             }
         }
 
-        public static void RenderSdf(Bitmap<FloatRgb> output, Bitmap<float> sdf, double pxRange)
+        public static void RenderSdf(Image<RgbaVector> output, Image<Rg32> sdf, double pxRange)
         {
             int w = output.Width, h = output.Height;
             pxRange *= (double) (w + h) / (sdf.Width + sdf.Height);
@@ -80,13 +82,11 @@ namespace Msdfgen
             {
                 var s = Sample(sdf, new Vector2((x + .5) / w, (y + .5) / h));
                 var v = DistVal(s, pxRange);
-                output[x, y].R = v;
-                output[x, y].G = v;
-                output[x, y].B = v;
+                output[x, y] = new RgbaVector(v, v, v);
             }
         }
 
-        public static void RenderSdf(Bitmap<float> output, Bitmap<FloatRgb> sdf, double pxRange)
+        public static void RenderSdf(Image<Rg32> output, Image<RgbaVector> sdf, double pxRange)
         {
             int w = output.Width, h = output.Height;
             pxRange *= (double) (w + h) / (sdf.Width + sdf.Height);
@@ -94,11 +94,11 @@ namespace Msdfgen
             for (var x = 0; x < w; ++x)
             {
                 var s = Sample(sdf, new Vector2((x + .5) / w, (y + .5) / h));
-                output[x, y] = DistVal(Arithmetic.Median(s.R, s.G, s.B), pxRange);
+                output[x, y] = new Rg32(DistVal(Arithmetic.Median(s.R, s.G, s.B), pxRange), 0f);
             }
         }
 
-        public static void RenderSdf(Bitmap<FloatRgb> output, Bitmap<FloatRgb> sdf, double pxRange)
+        public static void RenderSdf(Image<RgbaVector> output, Image<RgbaVector> sdf, double pxRange)
         {
             int w = output.Width, h = output.Height;
             pxRange *= (double) (w + h) / (sdf.Width + sdf.Height);
@@ -106,24 +106,22 @@ namespace Msdfgen
             for (var x = 0; x < w; ++x)
             {
                 var s = Sample(sdf, new Vector2((x + .5) / w, (y + .5) / h));
-                output[x, y].R = DistVal(s.R, pxRange);
-                output[x, y].G = DistVal(s.G, pxRange);
-                output[x, y].B = DistVal(s.B, pxRange);
+                output[x, y] = new RgbaVector(DistVal(s.R, pxRange), DistVal(s.G, pxRange), DistVal(s.B, pxRange));
             }
         }
 
-        public static void Simulate8Bit(Bitmap<float> bitmap)
+        public static void Simulate8Bit(Image<Rg32> bitmap)
         {
             int w = bitmap.Width, h = bitmap.Height;
             for (var y = 0; y < h; ++y)
             for (var x = 0; x < w; ++x)
             {
-                var v = (byte) Math.Clamp(bitmap[x, y] * 0x100, 0, 0xff);
-                bitmap[x, y] = v / 255.0f;
+                var v = (byte) Math.Clamp(bitmap[x, y].ToVector2().X * 0x100, 0, 0xff);
+                bitmap[x, y] = new Rg32(v / 255.0f, 0);
             }
         }
 
-        public static void Simulate8Bit(Bitmap<FloatRgb> bitmap)
+        public static void Simulate8Bit(Image<RgbaVector> bitmap)
         {
             int w = bitmap.Width, h = bitmap.Height;
             for (var y = 0; y < h; ++y)
@@ -132,9 +130,7 @@ namespace Msdfgen
                 var r = (byte) Math.Clamp(bitmap[x, y].R * 0x100, 0, 0xff);
                 var g = (byte) Math.Clamp(bitmap[x, y].G * 0x100, 0, 0xff);
                 var b = (byte) Math.Clamp(bitmap[x, y].B * 0x100, 0, 0xff);
-                bitmap[x, y].R = r / 255.0f;
-                bitmap[x, y].G = g / 255.0f;
-                bitmap[x, y].B = b / 255.0f;
+                bitmap[x, y] = new RgbaVector(r / 255.0f, g / 255.0f, b / 255.0f);
             }
         }
     }
